@@ -58,7 +58,7 @@ def test_query_returns_answer_and_sources():
     assert body["sources"][0]["source"] == "trial_adc_001.md"
     assert "Primary Endpoint" in body["sources"][0]["text"]
     assert "Primary Endpoint" in body["answer"]
-    assert body["disclaimer"] == "This demo is for software engineering evaluation only and does not provide medical advice."
+    assert body["disclaimer"] == "This project is intended for development and research workflow prototyping. It does not provide medical advice."
 
 
 def test_query_without_ingest_returns_empty_sources():

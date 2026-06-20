@@ -11,7 +11,7 @@ from app.core.errors import register_error_handlers
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Biomedical RAG and Agent workflow demo.",
+    description="Biomedical document retrieval, RAG query, structured trial extraction, and agent report workflow.",
 )
 
 register_error_handlers(app)

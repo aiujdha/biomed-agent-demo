@@ -66,6 +66,13 @@ class QueryService:
                 chunk_index=result.chunk.chunk_index,
                 score=result.score,
                 text=result.chunk.text,
+                citation_id=f"{result.chunk.source}#{result.chunk.chunk_index}",
+                excerpt=result.chunk.text[:240],
+                metadata={
+                    "document_id": result.chunk.document_id,
+                    "source": result.chunk.source,
+                    "chunk_index": result.chunk.chunk_index,
+                },
             )
             for result in results
         ]
@@ -74,7 +81,7 @@ class QueryService:
     def answer(self, question: str, top_k: int) -> QueryResponse:
         sources = self.retrieve_sources(question=question, top_k=top_k)
         context = "\n".join(
-            f"[source:{source.source}#{source.chunk_index}] {_compact_context(source.text)}"
+            f"[citation:{source.source}#{source.chunk_index}] {_compact_context(source.text)}"
             for source in sources
         )
         answer = self.llm_client.generate(

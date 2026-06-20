@@ -237,6 +237,23 @@ These are fabricated samples and do not contain real patient data or proprietary
 
 ---
 
+## Evaluation
+
+Run the lightweight RAG evaluation suite to verify source retrieval and term coverage on the bundled sample documents:
+
+```bash
+uv run python evals/run_rag_eval.py
+```
+
+The evaluator loads the three sample documents, runs each predefined question through `QueryService`, and checks:
+
+- The top retrieved source matches the expected document.
+- Key terms appear in the answer or source text.
+
+All cases must pass (exit 0) before a release. The evaluator uses the built-in `FakeLLMClient` and `HashEmbeddingModel` — no external API keys are required.
+
+---
+
 ## Limitations
 
 - **Local vector store** — The in-memory FAISS index is not persisted across restarts and does not support multi-tenancy or distributed querying. Production deployments should use a remote vector database.

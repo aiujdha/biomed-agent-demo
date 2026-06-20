@@ -8,6 +8,11 @@ class SourceChunk(BaseModel):
     score: float | None = None
     text: str
 
+    # Enhanced citation fields (PR11)
+    citation_id: str = ""
+    excerpt: str = ""
+    metadata: dict[str, str | int | float | None] = Field(default_factory=dict)
+
 
 class QueryRequest(BaseModel):
     question: str = Field(min_length=3)

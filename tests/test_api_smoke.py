@@ -68,3 +68,42 @@ def test_query_invalid_question():
     response = client.post("/query", json={"question": "ab"})
 
     assert response.status_code == 422
+
+
+def test_extract_trial_by_document_id_returns_structured_result():
+    client = TestClient(app)
+
+    response = client.post("/extract/trial", json={"document_id": "trial_adc_001"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["validation_status"] == "valid"
+    assert body["result"]["trial_id"] == "trial_adc_001"
+    assert body["result"]["phase"] == "Phase II"
+    assert body["result"]["sample_size"] == 120
+
+
+def test_extract_trial_by_text_returns_structured_result():
+    client = TestClient(app)
+
+    response = client.post(
+        "/extract/trial",
+        json={
+            "text": "A Phase II trial of ADC-101 in HER2-positive advanced solid tumors "
+            "with primary endpoint objective response rate."
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["validation_status"] == "valid"
+    assert body["result"]["primary_endpoint"] == "Objective response rate"
+
+
+def test_extract_trial_missing_document_returns_404():
+    client = TestClient(app)
+
+    response = client.post("/extract/trial", json={"document_id": "missing_trial"})
+
+    assert response.status_code == 404
+    assert "Document not found" in response.json()["detail"]

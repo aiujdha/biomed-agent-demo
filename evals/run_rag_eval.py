@@ -17,18 +17,18 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from app.core.config import settings
 from app.core.container import embedding_model, llm_client, vector_store
 from app.ingestion.pipeline import build_sample_chunks
 from app.services.query_service import QueryService
 
 
 def main() -> int:
-    cases_path = Path(__file__).parent / "rag_cases.json"
+    project_root = Path(__file__).resolve().parent.parent
+    cases_path = project_root / "evals" / "rag_cases.json"
     cases = json.loads(cases_path.read_text())
 
     # Ingest samples
-    chunks = build_sample_chunks(Path("samples"))
+    chunks = build_sample_chunks(project_root / "samples")
     vectors = embedding_model.embed_documents([c.text for c in chunks])
     vector_store.clear()
     vector_store.add(chunks, vectors)

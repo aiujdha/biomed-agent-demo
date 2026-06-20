@@ -38,6 +38,10 @@ def _compact_context(text: str) -> str:
     return " ".join(text.split())
 
 
+def _excerpt(text: str, max_length: int = 240) -> str:
+    return _compact_context(text)[:max_length]
+
+
 class QueryService:
     def __init__(
         self,
@@ -59,23 +63,27 @@ class QueryService:
             key=lambda result: (_keyword_overlap_score(result, terms), result.score),
             reverse=True,
         )[:top_k]
-        sources = [
-            SourceChunk(
-                document_id=result.chunk.document_id,
-                source=result.chunk.source,
-                chunk_index=result.chunk.chunk_index,
-                score=result.score,
-                text=result.chunk.text,
-                citation_id=f"{result.chunk.source}#{result.chunk.chunk_index}",
-                excerpt=result.chunk.text[:240],
-                metadata={
-                    "document_id": result.chunk.document_id,
-                    "source": result.chunk.source,
-                    "chunk_index": result.chunk.chunk_index,
-                },
+        sources = []
+        for result in results:
+            citation_id = f"{result.chunk.source}#{result.chunk.chunk_index}"
+            sources.append(
+                SourceChunk(
+                    document_id=result.chunk.document_id,
+                    source=result.chunk.source,
+                    chunk_index=result.chunk.chunk_index,
+                    score=result.score,
+                    text=result.chunk.text,
+                    citation_id=citation_id,
+                    excerpt=_excerpt(result.chunk.text),
+                    metadata={
+                        "citation_id": citation_id,
+                        "document_id": result.chunk.document_id,
+                        "source": result.chunk.source,
+                        "chunk_index": result.chunk.chunk_index,
+                        "score": result.score,
+                    },
+                )
             )
-            for result in results
-        ]
         return sources
 
     def answer(self, question: str, top_k: int) -> QueryResponse:

@@ -48,8 +48,8 @@ class TestCitationSchema:
         for src in body["sources"]:
             assert "excerpt" in src
             assert isinstance(src["excerpt"], str)
-            # excerpt should be a truncated version of text
-            assert src["excerpt"] == src["text"][:240]
+            # excerpt should be a compact, truncated version of text
+            assert src["excerpt"] == " ".join(src["text"].split())[:240]
 
     def test_excerpt_is_truncated_to_240_chars(self) -> None:
         client = TestClient(app)
@@ -86,9 +86,11 @@ class TestCitationSchema:
         src = body["sources"][0]
         assert "metadata" in src
         md = src["metadata"]
+        assert md["citation_id"] == src["citation_id"]
         assert md["document_id"] == src["document_id"]
         assert md["source"] == src["source"]
         assert md["chunk_index"] == src["chunk_index"]
+        assert md["score"] == src["score"]
 
     def test_score_field_still_present(self) -> None:
         client = TestClient(app)

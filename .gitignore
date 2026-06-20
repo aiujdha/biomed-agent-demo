@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[oc]
+*.pyo
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+
+# Virtual environments
+.venv/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# Local data
+.local/
+
+# OS
+.DS_Store
+Thumbs.db

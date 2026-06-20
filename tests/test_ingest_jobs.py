@@ -5,6 +5,7 @@ import time
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.document_service import DocumentService
 
 
 class TestIngestJobs:
@@ -68,3 +69,44 @@ class TestIngestJobs:
 
         assert resp.json()["status"] == "succeeded"
         assert resp.json()["document_count"] == 3
+
+    def test_query_can_use_index_after_job_succeeds(self) -> None:
+        client = TestClient(app)
+        response = client.post("/documents/ingest-jobs", json={"source": "samples"})
+        job_id = response.json()["job_id"]
+
+        for _ in range(20):
+            status_response = client.get(f"/documents/ingest-jobs/{job_id}")
+            if status_response.json()["status"] == "succeeded":
+                break
+            time.sleep(0.05)
+
+        query_response = client.post(
+            "/query",
+            json={
+                "question": "What is the primary endpoint of the ADC trial?",
+                "top_k": 3,
+            },
+        )
+        assert query_response.status_code == 200
+        body = query_response.json()
+        assert body["sources"]
+        assert body["sources"][0]["source"] == "trial_adc_001.md"
+
+    def test_job_failure_records_failed_status(self, monkeypatch) -> None:
+        def fail_ingest(self):
+            raise RuntimeError("simulated ingest failure")
+
+        monkeypatch.setattr(DocumentService, "ingest_samples", fail_ingest)
+
+        client = TestClient(app)
+        response = client.post("/documents/ingest-jobs", json={"source": "samples"})
+        job_id = response.json()["job_id"]
+
+        status_response = client.get(f"/documents/ingest-jobs/{job_id}")
+        assert status_response.status_code == 200
+        body = status_response.json()
+        assert body["status"] == "failed"
+        assert body["document_count"] == 0
+        assert body["chunk_count"] == 0
+        assert "simulated ingest failure" in body["error"]

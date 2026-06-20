@@ -121,7 +121,16 @@ curl -X POST http://localhost:8000/query \
       "source": "trial_adc_001.md",
       "chunk_index": 2,
       "score": 0.1396,
-      "text": "..."
+      "text": "...",
+      "citation_id": "trial_adc_001.md#2",
+      "excerpt": "Primary Endpoint: Objective response rate ...",
+      "metadata": {
+        "citation_id": "trial_adc_001.md#2",
+        "document_id": "trial_adc_001",
+        "source": "trial_adc_001.md",
+        "chunk_index": 2,
+        "score": 0.1396
+      }
     }
   ],
   "disclaimer": "This project is intended for development and research workflow prototyping. It does not provide medical advice."

@@ -30,6 +30,6 @@ class IngestJobStatusResponse(BaseModel):
     job_id: str
     status: IngestJobStatus
     source: str
-    document_count: int | None = None
-    chunk_count: int | None = None
+    document_count: int = 0
+    chunk_count: int = 0
     error: str | None = None

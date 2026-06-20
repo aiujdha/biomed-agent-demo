@@ -12,7 +12,7 @@ Built with FastAPI, FAISS, and Pydantic. Runs without external dependencies or A
 - **Retrieval-Augmented Q&A** — Retrieve relevant document chunks and generate sourced answers grounded in the ingested content.
 - **Structured Trial Extraction** — Extract structured clinical trial fields (phase, indication, endpoints, sample size, criteria) validated against a Pydantic schema.
 - **Agent Report Workflow** — Multi-step pipeline that chains retrieval, extraction, and summarization into an inspectable report with per-step status.
-- **No-Key Default** — Built-in hash-based embedding and a fake LLM client allow the full pipeline to run without any API keys. Swap in an OpenAI-compatible LLM when needed.
+- **No-Key Default** — Built-in hash-based embedding and a fake LLM client allow the full pipeline to run without API keys. The embedding and generation clients are isolated behind small protocols for later replacement.
 
 ---
 
@@ -176,7 +176,7 @@ app/
 ├── ingestion/          # File loading and text chunking
 ├── rag/               # Embedding, FAISS vector store, retrieval, prompts
 ├── extraction/         # Pydantic schemas and structured field extraction
-├── llm/               # LLM client (fake default; OpenAI-compatible)
+├── llm/               # LLM client protocol and fake default
 ├── agent/             # Tool functions and report workflow
 ├── services/          # Business logic orchestration
 └── schemas/           # Request/response models
@@ -193,8 +193,8 @@ The service layer sits between the HTTP routes and the domain modules. Each modu
 | API | FastAPI, Uvicorn |
 | Validation | Pydantic v2 |
 | Vector Store | FAISS (in-memory) |
-| Embedding | HashEmbedding (default, no key required) / OpenAI-compatible |
-| LLM | FakeLLM (default) / OpenAI-compatible |
+| Embedding | HashEmbedding (default, no key required) |
+| LLM | FakeLLM (default, no key required) |
 | Tests | pytest, FastAPI TestClient |
 | Packaging | uv |
 | Container | Docker |
@@ -219,11 +219,11 @@ These are fabricated samples and do not contain real patient data or proprietary
 
 - **Local vector store** — The in-memory FAISS index is not persisted across restarts and does not support multi-tenancy or distributed querying. Production deployments should use a remote vector database.
 - **No authentication** — The API has no built-in auth layer. It should be deployed behind a reverse proxy or VPN in any non-local environment.
-- **Research prototyping only** — The system is designed for development workflow prototyping and software evaluation. It is not validated for clinical decision support and must not be used for medical diagnosis or treatment decisions.
+- **Research prototyping only** — The system is designed for development workflow prototyping. It is not validated for clinical decision support and must not be used for medical diagnosis or treatment decisions.
 - **Synthetic sample data** — All bundled documents are fabricated. Replace with real (de-identified) data for any meaningful evaluation.
 
 ---
 
-## Project Status
+## Current Scope
 
 v0.1.0 — Core retrieval, extraction, and agent workflows are functional over built-in sample documents.

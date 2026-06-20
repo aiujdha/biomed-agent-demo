@@ -12,7 +12,7 @@ Built with FastAPI, FAISS, and Pydantic. Runs without external dependencies or A
 - **Retrieval-Augmented Q&A** — Retrieve relevant document chunks and generate sourced answers grounded in the ingested content.
 - **Structured Trial Extraction** — Extract structured clinical trial fields (phase, indication, endpoints, sample size, criteria) validated against a Pydantic schema.
 - **Agent Report Workflow** — Multi-step pipeline that chains retrieval, extraction, and summarization into an inspectable report with per-step status.
-- **No-Key Default** — Built-in hash-based embedding and a fake LLM client allow the full pipeline to run without API keys. The embedding and generation clients are isolated behind small protocols for later replacement.
+- **No-Key Default** — Built-in hash-based embedding and a fake LLM client allow the full pipeline to run without API keys. The generation client can also be switched to an OpenAI-compatible text chat endpoint.
 
 ---
 
@@ -167,6 +167,27 @@ If no sources are available or the retrieved content does not contain clinical t
 
 ---
 
+## Configuration
+
+The default configuration is local-only and does not require API keys:
+
+```env
+LLM_PROVIDER=fake
+```
+
+To use a text-only OpenAI-compatible chat completion endpoint, set:
+
+```env
+LLM_PROVIDER=openai-compatible
+LLM_API_KEY=your-provider-key
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
+```
+
+`LLM_BASE_URL` may point to any provider that exposes an OpenAI-compatible `/chat/completions` API. This project does not use multimodal input, image understanding, OCR, streaming, or tool-calling providers in the current scope.
+
+---
+
 ## Architecture
 
 ```
@@ -176,7 +197,7 @@ app/
 ├── ingestion/          # File loading and text chunking
 ├── rag/               # Embedding, FAISS vector store, retrieval, prompts
 ├── extraction/         # Pydantic schemas and structured field extraction
-├── llm/               # LLM client protocol and fake default
+├── llm/               # LLM client protocol, fake default, OpenAI-compatible text client
 ├── agent/             # Tool functions and report workflow
 ├── services/          # Business logic orchestration
 └── schemas/           # Request/response models
@@ -194,7 +215,7 @@ The service layer sits between the HTTP routes and the domain modules. Each modu
 | Validation | Pydantic v2 |
 | Vector Store | FAISS (in-memory) |
 | Embedding | HashEmbedding (default, no key required) |
-| LLM | FakeLLM (default, no key required) |
+| LLM | FakeLLM (default) / OpenAI-compatible text chat |
 | Tests | pytest, FastAPI TestClient |
 | Packaging | uv |
 | Container | Docker |

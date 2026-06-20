@@ -4,6 +4,15 @@ from app.core.container import vector_store
 from app.main import app
 
 
+def assert_error_response(response, status_code: int, error: str) -> dict:
+    assert response.status_code == status_code
+    body = response.json()
+    assert body["error"] == error
+    assert isinstance(body["message"], str)
+    assert body["request_id"] is None
+    return body
+
+
 def test_ingest_samples_returns_counts():
     client = TestClient(app)
     response = client.post("/documents/ingest", json={"source": "samples"})
@@ -32,6 +41,7 @@ def test_ingest_samples_is_idempotent():
 
 def test_query_returns_answer_and_sources():
     client = TestClient(app)
+    # Ensure documents are ingested first
     client.post("/documents/ingest", json={"source": "samples"})
 
     response = client.post(
@@ -67,7 +77,8 @@ def test_query_invalid_question():
     client = TestClient(app)
     response = client.post("/query", json={"question": "ab"})
 
-    assert response.status_code == 422
+    body = assert_error_response(response, 422, "validation_error")
+    assert "question" in body["message"]
 
 
 def test_extract_trial_by_document_id_returns_structured_result():
@@ -105,8 +116,8 @@ def test_extract_trial_missing_document_returns_404():
 
     response = client.post("/extract/trial", json={"document_id": "missing_trial"})
 
-    assert response.status_code == 404
-    assert "Document not found" in response.json()["detail"]
+    body = assert_error_response(response, 404, "not_found")
+    assert "Document not found" in body["message"]
 
 
 def test_agent_report_returns_steps():
@@ -166,4 +177,14 @@ def test_agent_report_invalid_topic():
 
     response = client.post("/agent/report", json={"topic": "ab"})
 
-    assert response.status_code == 422
+    body = assert_error_response(response, 422, "validation_error")
+    assert "topic" in body["message"]
+
+
+def test_unknown_route_returns_error_response():
+    client = TestClient(app)
+
+    response = client.get("/missing")
+
+    body = assert_error_response(response, 404, "not_found")
+    assert body["message"] == "Not Found"

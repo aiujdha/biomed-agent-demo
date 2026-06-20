@@ -14,7 +14,10 @@ class FakeLLMClient:
             return self._mock_extraction(user_prompt)
 
         lines = [line.strip() for line in user_prompt.splitlines() if line.strip()]
-        context_lines = [line for line in lines if line.startswith("[source:")]
+        context_lines = [
+            line for line in lines
+            if line.startswith("[source:") or line.startswith("[citation:")
+        ]
         if not context_lines:
             return "The answer cannot be determined from the available documents."
         return "Based on the retrieved context: " + context_lines[0]

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "trial_primary_endpoint",
+    "question": "What is the primary endpoint of the ADC trial?",
+    "expected_source": "trial_adc_001.md",
+    "expected_terms": ["Primary Endpoint", "Objective response rate"]
+  },
+  {
+    "id": "cell_culture_passaging",
+    "question": "What should be checked before passaging cells?",
+    "expected_source": "sop_cell_culture.md",
+    "expected_terms": ["confluence"]
+  },
+  {
+    "id": "cell_culture_thawing",
+    "question": "How to thaw cryopreserved cells?",
+    "expected_source": "sop_cell_culture.md",
+    "expected_terms": ["37", "water bath", "DMSO"]
+  },
+  {
+    "id": "adc_approval",
+    "question": "Which ADC was first approved for solid tumors?",
+    "expected_source": "pubmed_adc_summary.md",
+    "expected_terms": ["T-DM1", "Trastuzumab emtansine", "EMILIA"]
+  }
+]

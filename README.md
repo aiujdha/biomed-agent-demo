@@ -1,6 +1,6 @@
 # BioMed Agent Demo
 
-**A FastAPI + RAG + Agent backend demo for biomedical document Q&A, structured clinical trial extraction, and multi-step report generation. Clone, run, and evaluate in under 10 minutes.**
+**A FastAPI-based biomedical RAG, structured extraction, and agent workflow demo.**
 
 Biomedical RAG and Agent workflow demo — a FastAPI backend for biomedical document Q&A and structured information extraction.
 

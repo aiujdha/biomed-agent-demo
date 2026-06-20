@@ -67,6 +67,41 @@ curl -X POST http://localhost:8000/documents/ingest \
 {"document_count":3,"chunk_count":12,"vector_store_path":".local/faiss"}
 ```
 
+### Async Ingest Job
+
+Submit an ingestion request that runs in the background. The job ID is returned immediately and can be polled for status updates.
+
+```bash
+curl -X POST http://localhost:8000/documents/ingest-jobs \
+  -H "Content-Type: application/json" \
+  -d '{"source":"samples"}'
+```
+
+```json
+{"job_id":"ingest_a1b2c3d4e5f6","status":"pending","source":"samples"}
+```
+
+Poll the job status:
+
+```bash
+curl http://localhost:8000/documents/ingest-jobs/ingest_a1b2c3d4e5f6
+```
+
+```json
+{
+  "job_id": "ingest_a1b2c3d4e5f6",
+  "status": "succeeded",
+  "source": "samples",
+  "document_count": 3,
+  "chunk_count": 12,
+  "error": null
+}
+```
+
+The job transitions through `pending` → `running` → `succeeded` (or `failed`). A missing job ID returns `404`.
+
+> **Note:** The job store is in-memory only — jobs are lost on restart and not visible across uvicorn workers. This is suitable for development and single-worker deployments.
+
 ### Query
 
 Ask a question against the ingested document index. Responses include retrieved source chunks with similarity scores.
@@ -260,6 +295,7 @@ All cases must pass (exit 0) before a release. The evaluator uses the built-in `
 - **No authentication** — The API has no built-in auth layer. It should be deployed behind a reverse proxy or VPN in any non-local environment.
 - **Research prototyping only** — The system is designed for development workflow prototyping. It is not validated for clinical decision support and must not be used for medical diagnosis or treatment decisions.
 - **Synthetic sample data** — All bundled documents are fabricated. Replace with real (de-identified) data for any meaningful evaluation.
+- **In-memory job store** — The async ingestion job store is process-memory only. Jobs are lost on restart, are not visible across uvicorn workers, and do not support cancellation or queue capacity control.
 
 ---
 

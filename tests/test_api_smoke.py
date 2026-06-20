@@ -107,3 +107,63 @@ def test_extract_trial_missing_document_returns_404():
 
     assert response.status_code == 404
     assert "Document not found" in response.json()["detail"]
+
+
+def test_agent_report_returns_steps():
+    client = TestClient(app)
+    client.post("/documents/ingest", json={"source": "samples"})
+
+    response = client.post("/agent/report", json={"topic": "ADC clinical trial"})
+
+    assert response.status_code == 200
+    body = response.json()
+    step_names = [step["name"] for step in body["steps"]]
+    assert step_names == [
+        "retrieve_documents",
+        "extract_trial_fields",
+        "summarize_findings",
+        "return_response",
+    ]
+    assert all(step["status"] == "success" for step in body["steps"])
+    assert len(body["sources"]) > 0
+    assert len(body["report"]) > 0
+    assert "Objective response rate" in body["report"]
+    assert "sample size: 120" in body["report"]
+
+
+def test_agent_report_without_ingest_skips_extraction():
+    client = TestClient(app)
+    vector_store.clear()
+
+    response = client.post("/agent/report", json={"topic": "ADC clinical trial"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sources"] == []
+    assert body["steps"][1]["name"] == "extract_trial_fields"
+    assert body["steps"][1]["status"] == "skipped"
+    assert "No supporting sources" in body["report"]
+
+
+def test_agent_report_skips_extraction_for_non_trial_sources():
+    client = TestClient(app)
+    client.post("/documents/ingest", json={"source": "samples"})
+
+    response = client.post("/agent/report", json={"topic": "cell culture SOP"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sources"]
+    assert body["steps"][1]["name"] == "extract_trial_fields"
+    assert body["steps"][1]["status"] == "skipped"
+    assert "clinical trial document" in body["steps"][1]["summary"]
+    assert "Objective response rate" not in body["report"]
+    assert "sample size: 120" not in body["report"]
+
+
+def test_agent_report_invalid_topic():
+    client = TestClient(app)
+
+    response = client.post("/agent/report", json={"topic": "ab"})
+
+    assert response.status_code == 422

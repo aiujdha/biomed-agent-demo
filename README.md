@@ -11,7 +11,7 @@ Built with FastAPI, FAISS, and Pydantic. Runs without external dependencies or A
 - **Document Ingestion** — Load biomedical sample documents (SOPs, literature summaries, clinical trial briefs) into an in-memory FAISS vector index.
 - **Retrieval-Augmented Q&A** — Retrieve relevant document chunks and generate sourced answers grounded in the ingested content.
 - **Structured Trial Extraction** — Extract structured clinical trial fields (phase, indication, endpoints, sample size, criteria) validated against a Pydantic schema.
-- **Agent Report Workflow** — Multi-step pipeline that chains retrieval, extraction, and summarization into an inspectable report with per-step status.
+- **Agent Report Workflow** — Multi-step pipeline built with LangGraph that chains retrieval, extraction, and summarization into an inspectable report with per-step status.
 - **No-Key Default** — Built-in hash-based embedding and a fake LLM client allow the full pipeline to run without API keys. The generation client can also be switched to an OpenAI-compatible text chat endpoint.
 
 ---
@@ -198,7 +198,7 @@ app/
 ├── rag/               # Embedding, FAISS vector store, retrieval, prompts
 ├── extraction/         # Pydantic schemas and structured field extraction
 ├── llm/               # LLM client protocol, fake default, OpenAI-compatible text client
-├── agent/             # Tool functions and report workflow
+├── agent/             # LangGraph-compiled workflow, state, and tool functions
 ├── services/          # Business logic orchestration
 └── schemas/           # Request/response models
 ```
@@ -216,6 +216,7 @@ The service layer sits between the HTTP routes and the domain modules. Each modu
 | Vector Store | FAISS (in-memory) |
 | Embedding | HashEmbedding (default, no key required) |
 | LLM | FakeLLM (default) / OpenAI-compatible text chat |
+| Workflow Orchestration | LangGraph |
 | Tests | pytest, FastAPI TestClient |
 | Packaging | uv |
 | Container | Docker |

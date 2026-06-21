@@ -1,18 +1,19 @@
 # BioMed Knowledge API
 
-**A local-first FastAPI service for biomedical document retrieval, RAG-based Q&A, structured trial information extraction, and multi-step agent report workflows.**
+**A local-first FastAPI service for biomedical document retrieval, RAG-based Q&A, structured clinical trial extraction, and multi-step agent report workflows.**
 
-Built with FastAPI, FAISS, and Pydantic. Runs without external dependencies or API keys in its default configuration — clone, install, and start querying in minutes.
+Built with FastAPI, FAISS, LangGraph, and Pydantic. Runs without external API keys in its default configuration, using a built-in hash-based embedding model and a fake LLM client for offline development and CI.
 
 ---
 
 ## Features
 
-- **Document Ingestion** — Load biomedical sample documents (SOPs, literature summaries, clinical trial briefs) into an in-memory FAISS vector index.
-- **Retrieval-Augmented Q&A** — Retrieve relevant document chunks and generate sourced answers grounded in the ingested content.
-- **Structured Trial Extraction** — Extract structured clinical trial fields (phase, indication, endpoints, sample size, criteria) validated against a Pydantic schema.
-- **Agent Report Workflow** — Multi-step pipeline built with LangGraph that chains retrieval, extraction, and summarization into an inspectable report with per-step status.
-- **No-Key Default** — Built-in hash-based embedding and a fake LLM client allow the full pipeline to run without API keys. The generation client can also be switched to an OpenAI-compatible text chat endpoint.
+- **Document Ingestion** — Load biomedical sample documents (SOPs, literature summaries, clinical trial briefs) into an in-memory FAISS vector index. Synchronous and async (BackgroundTasks) ingestion endpoints.
+- **Retrieval-Augmented Q&A** — Retrieve relevant document chunks with similarity scores and citation metadata. Generate grounded answers using the configured LLM provider.
+- **Structured Trial Extraction** — Extract structured clinical trial fields (phase, indication, endpoints, sample size, criteria) from document content or raw text, validated against a Pydantic schema.
+- **Agent Report Workflow** — Multi-step pipeline built with LangGraph StateGraph that chains retrieval, extraction, and summarization into an inspectable report with per-step status and source references.
+- **Pluggable LLM Providers** — Built-in fake LLM (zero-config default for CI/offline) and an OpenAI-compatible text chat client supporting any provider with a `/chat/completions` endpoint (DeepSeek, Qwen, Ollama, vLLM, etc.).
+- **RAG Evaluation Suite** — Standalone evaluation runner with predefined cases covering document-level source matching and key term coverage. Exit-code-gated for CI pipelines.
 
 ---
 
@@ -31,13 +32,11 @@ Run tests:
 uv run pytest
 ```
 
-Run with Docker (optional):
+Run with Docker:
 
 ```bash
 docker compose up --build
 ```
-
-The API is available at http://localhost:8000. The `uv` workflow is the fastest path while iterating.
 
 ---
 
@@ -69,7 +68,7 @@ curl -X POST http://localhost:8000/documents/ingest \
 
 ### Async Ingest Job
 
-Submit an ingestion request that runs in the background. The job ID is returned immediately and can be polled for status updates.
+Submit an ingestion request that runs in the background via FastAPI BackgroundTasks. The job ID is returned immediately and can be polled for status.
 
 ```bash
 curl -X POST http://localhost:8000/documents/ingest-jobs \
@@ -104,7 +103,7 @@ The job transitions through `pending` → `running` → `succeeded` (or `failed`
 
 ### Query
 
-Ask a question against the ingested document index. Responses include retrieved source chunks with similarity scores.
+Ask a question against the ingested document index. Responses include retrieved source chunks with similarity scores and citation metadata.
 
 ```bash
 curl -X POST http://localhost:8000/query \
@@ -133,7 +132,7 @@ curl -X POST http://localhost:8000/query \
       }
     }
   ],
-  "disclaimer": "This project is intended for development and research workflow prototyping. It does not provide medical advice."
+  "disclaimer": "This project is intended for research and development prototyping. It does not provide medical advice."
 }
 ```
 
@@ -219,7 +218,7 @@ The default configuration is local-only and does not require API keys:
 LLM_PROVIDER=fake
 ```
 
-To use a text-only OpenAI-compatible chat completion endpoint, set:
+To use a text-only OpenAI-compatible chat completion endpoint:
 
 ```env
 LLM_PROVIDER=openai-compatible
@@ -228,7 +227,7 @@ LLM_BASE_URL=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
 ```
 
-`LLM_BASE_URL` may point to any provider that exposes an OpenAI-compatible `/chat/completions` API. This project does not use multimodal input, image understanding, OCR, streaming, or tool-calling providers in the current scope.
+`LLM_BASE_URL` may point to any provider that exposes an OpenAI-compatible `/chat/completions` API (DeepSeek, Qwen, SiliconFlow, OpenRouter, Ollama, local vLLM). The current scope does not include multimodal input, image understanding, OCR, streaming, or tool-calling support.
 
 ---
 
@@ -237,17 +236,17 @@ LLM_MODEL=gpt-4o-mini
 ```
 app/
 ├── api/routes/         # HTTP endpoints (health, documents, query, extract, agent)
-├── core/               # Configuration, dependency container, error handling
+├── core/               # Configuration (pydantic-settings), dependency container, error handling
 ├── ingestion/          # File loading and text chunking
-├── rag/               # Embedding, FAISS vector store, retrieval, prompts
-├── extraction/         # Pydantic schemas and structured field extraction
+├── rag/               # Embedding, FAISS vector store, retrieval, prompt templates
+├── extraction/         # Pydantic validation schemas and structured field extraction
 ├── llm/               # LLM client protocol, fake default, OpenAI-compatible text client
-├── agent/             # LangGraph-compiled workflow, state, and tool functions
-├── services/          # Business logic orchestration
-└── schemas/           # Request/response models
+├── agent/             # LangGraph-compiled StateGraph workflow, state definition, tool functions
+├── services/          # Business logic orchestration (document, query, extraction, ingest jobs)
+└── schemas/           # Request/response Pydantic models
 ```
 
-The service layer sits between the HTTP routes and the domain modules. Each module has a single responsibility and can be replaced independently — for example, the FAISS vector store can be swapped for a remote vector database without touching the API routes.
+The service layer decouples HTTP routes from domain logic. Each module has a single responsibility and can be replaced independently — for example, the FAISS vector store can be swapped for a remote vector database without modifying the API routes.
 
 ---
 
@@ -255,29 +254,15 @@ The service layer sits between the HTTP routes and the domain modules. Each modu
 
 | Layer | Technology |
 |-------|-----------|
-| API | FastAPI, Uvicorn |
+| API framework | FastAPI, Uvicorn |
 | Validation | Pydantic v2 |
-| Vector Store | FAISS (in-memory) |
-| Embedding | HashEmbedding (default, no key required) |
+| Vector store | FAISS (in-memory, IndexFlatIP) |
+| Embedding | HashEmbedding (deterministic, no external service) |
 | LLM | FakeLLM (default) / OpenAI-compatible text chat |
-| Workflow Orchestration | LangGraph |
-| Tests | pytest, FastAPI TestClient |
+| Workflow orchestration | LangGraph (StateGraph) |
+| Testing | pytest, FastAPI TestClient |
 | Packaging | uv |
-| Container | Docker |
-
----
-
-## Sample Data
-
-The repository includes three synthetic biomedical documents for demonstration:
-
-| File | Type | Content |
-|------|------|---------|
-| `samples/sop_cell_culture.md` | Standard Operating Procedure | Cell culture thawing, passaging, cryopreservation |
-| `samples/pubmed_adc_summary.md` | Literature Review | ADC oncology review with clinical trial results |
-| `samples/trial_adc_001.md` | Clinical Trial Summary | Phase II ADC-101 trial design and endpoints |
-
-These are fabricated samples and do not contain real patient data or proprietary information.
+| Container | Docker, Docker Compose |
 
 ---
 
@@ -298,16 +283,48 @@ All cases must pass (exit 0) before a release. The evaluator uses the built-in `
 
 ---
 
-## Limitations
+## Sample Data
 
-- **Local vector store** — The in-memory FAISS index is not persisted across restarts and does not support multi-tenancy or distributed querying. Production deployments should use a remote vector database.
-- **No authentication** — The API has no built-in auth layer. It should be deployed behind a reverse proxy or VPN in any non-local environment.
-- **Research prototyping only** — The system is designed for development workflow prototyping. It is not validated for clinical decision support and must not be used for medical diagnosis or treatment decisions.
-- **Synthetic sample data** — All bundled documents are fabricated. Replace with real (de-identified) data for any meaningful evaluation.
-- **In-memory job store** — The async ingestion job store is process-memory only. Jobs are lost on restart, are not visible across uvicorn workers, and do not support cancellation or queue capacity control.
+The repository includes three synthetic biomedical documents for demonstration:
+
+| File | Type | Content |
+|------|------|---------|
+| `samples/sop_cell_culture.md` | Standard Operating Procedure | Cell culture thawing, passaging, cryopreservation |
+| `samples/pubmed_adc_summary.md` | Literature Review | ADC oncology review with clinical trial results |
+| `samples/trial_adc_001.md` | Clinical Trial Summary | Phase II ADC-101 trial design and endpoints |
+
+These are fabricated samples and do not contain real patient data or proprietary information.
 
 ---
 
-## Current Scope
+## Demo Script
 
-v0.1.0 — Core retrieval, extraction, and agent workflows are functional over built-in sample documents.
+See [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) for a complete walkthrough covering all API endpoints.
+
+---
+
+## Roadmap
+
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the post-v0.2.0 roadmap and feature backlog.
+
+---
+
+## Release Notes
+
+See [`docs/RELEASE_NOTES_v0.2.0.md`](docs/RELEASE_NOTES_v0.2.0.md) for the current release candidate. Historical notes are available in [`docs/RELEASE_NOTES_v0.1.0.md`](docs/RELEASE_NOTES_v0.1.0.md).
+
+---
+
+## Limitations
+
+- **Local vector store** — The in-memory FAISS index is not persisted across restarts and does not support multi-tenancy or distributed querying. Production deployments should use a remote vector database.
+- **In-memory job store** — The async ingestion job store is process-memory only. Jobs are lost on restart, are not visible across uvicorn workers, and do not support cancellation or queue capacity control.
+- **No authentication** — The API has no built-in auth layer. It should be deployed behind a reverse proxy or VPN in any non-local environment.
+- **Research prototyping only** — The system is designed for research and development workflow prototyping. It is not validated for clinical decision support and must not be used for medical diagnosis or treatment decisions.
+- **Synthetic sample data** — All bundled documents are fabricated. Replace with real (de-identified) data for any meaningful evaluation.
+
+---
+
+## License
+
+MIT
